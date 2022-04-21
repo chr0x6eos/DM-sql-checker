@@ -2,6 +2,7 @@
 import argparse
 import csv
 import psycopg2
+from re import match
 
 class DB:
     conn = None
@@ -124,7 +125,7 @@ if __name__ == '__main__':
         '-v', '--verbose', help='Show verbose', action='store_true'
     )
     parser.add_argument(
-        '-s', '--sql', help='Select sql to run', required=True, type=argparse.FileType('r'), nargs='+'
+        '-s', '--sql', help='Select sql to run (Naming convention: q[0-8].sql)', required=True, type=argparse.FileType('r'), nargs='+'
     )
 
     args = parser.parse_args()
@@ -138,8 +139,11 @@ if __name__ == '__main__':
 
     if(len(args.sql) > 0):
         for sql in args.sql:
-            if db.check(sql):
-                print(
-                    f'\033[92m[+]\033[39m Query {sql.name} match expected result!')
+            if not match(r"q[0-8].sql", sql.name):
+                print(f'\033[91m[-]\033[39m {sql.name} does not match naming convention: q[0-8].sql')
             else:
-                print(f'\033[91m[-]\033[39m Query {sql.name} does not match!')
+                if db.check(sql):
+                    print(
+                        f'\033[92m[+]\033[39m Query {sql.name} match expected result!')
+                else:
+                    print(f'\033[91m[-]\033[39m Query {sql.name} does not match!')
