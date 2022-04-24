@@ -2,7 +2,9 @@
 import argparse
 import csv
 import psycopg2
+import time
 from re import match
+
 
 class DB:
     conn = None
@@ -12,14 +14,16 @@ class DB:
     username = ""
     password = ""
     verbose = True
+    show_time = False
 
-    def __init__(self, host: str, port: int, username: str, password: str, db_name: str = '', verbose: bool = True) -> None:
+    def __init__(self, host: str, port: int, username: str, password: str, db_name: str = '', verbose: bool = True, show_time: bool = False) -> None:
         self.host = host
         self.port = port
         self.db_name = db_name
         self.username = username
         self.password = password
         self.verbose = verbose
+        self.show_time = show_time
         try:
             self.connect()
         except Exception as ex:
@@ -52,11 +56,17 @@ class DB:
             print(f"{data} {message}")
 
     def exec_sql(self, sql, data):
+        if self.show_time:
+            start_time = time.time()
         try:
             with self.conn.cursor() as cursor:
                 cursor.execute(sql, (data))
                 self.conn.commit()
-                return cursor.fetchall()
+                data = cursor.fetchall()
+                if self.show_time:
+                    print(
+                        f"\033[34m[*]\033[39m Got {len(data)} entries after {time.time() - start_time} seconds")
+                return data
         except Exception as ex:
             print(
                 f"\033[91m[-]\033[39m Could not run query: {sql} because of an error.\n{ex}")
@@ -102,8 +112,12 @@ class DB:
         if sql_result == expected_result:
             return True
         else:
+            results = []
+            for result in sql_result:
+                if result not in expected_result:
+                    results.append(result)
             print(
-                f'\033[93m[!]\033[39m Unexpected results in sql-query:\n{[result if result not in expected_result else None for result in sql_result]}')
+                f'\033[93m[!]\033[39m Unexpected results in sql-query:\n{results}')
             print(f'Expected:\n{expected_result}')
             return False
 
@@ -125,6 +139,9 @@ if __name__ == '__main__':
         '-v', '--verbose', help='Show verbose', action='store_true'
     )
     parser.add_argument(
+        '-t', '--time', help='Show time each query took', action='store_true'
+    )
+    parser.add_argument(
         '-s', '--sql', help='Select sql to run (Naming convention: q[0-8].sql)', required=True, type=argparse.FileType('r'), nargs='+'
     )
 
@@ -135,15 +152,17 @@ if __name__ == '__main__':
         exit(1)
 
     db = DB(args.host, args.port, args.user,
-            args.password, args.db, args.verbose)
+            args.password, args.db, args.verbose, args.time)
 
     if(len(args.sql) > 0):
         for sql in args.sql:
-            if not match(r"q[0-8].sql", sql.name):
-                print(f'\033[91m[-]\033[39m {sql.name} does not match naming convention: q[0-8].sql')
+            if not match(r"q0[0-8].sql", sql.name):
+                print(
+                    f'\033[91m[-]\033[39m {sql.name} does not match naming convention: q[0-8].sql')
             else:
                 if db.check(sql):
                     print(
                         f'\033[92m[+]\033[39m Query {sql.name} match expected result!')
                 else:
-                    print(f'\033[91m[-]\033[39m Query {sql.name} does not match!')
+                    print(
+                        f'\033[91m[-]\033[39m Query {sql.name} does not match!')
