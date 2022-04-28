@@ -99,7 +99,7 @@ class DB:
         sql_result = sorted([[str(y) for y in x]
                             for x in self.exec_sql(sql, [])])
         expected_result = sorted([x for x in self.csv_to_list(
-            f'references/{file.name.split(".")[0].upper()}_ref.csv')])
+            f'references/{file.name.split(".")[0]}_ref.csv')])
 
         # Clear empty values
         if [] in sql_result:
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
     if(len(args.sql) > 0):
         for sql in args.sql:
-            if not match(r"q0[0-8].sql", sql.name):
+            if not match(r"Q0[0-8].sql", sql.name):
                 print(
                     f'\033[91m[-]\033[39m {sql.name} does not match naming convention: q[0-8].sql')
             else:
